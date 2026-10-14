@@ -1,4 +1,6 @@
 ---
 collections:
-  - name: hashicorp.vault
-    version: ">=1.2.0"
+  # TPM modules (auth_method, tpm_auth_config, identity_tpm, tpm_role) are on this fork.
+  - name: https://github.com/drewmullen/hashicorp.vault.git
+    type: git
+    version: main

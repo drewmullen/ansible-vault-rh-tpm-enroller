@@ -1,6 +1,6 @@
 # Modules to build
 
-The playbook is split into `vault_tpm_enroll` and `vault_tpm_proxy`. Mount enable and the auth CA write stay in the demo. `tpm_role` is still the enroll role's missing module, because that role appends `tpm_ids` after enroll. `acl_policy` already covers policy HCL and is used by the demo, not by the host roles.
+`vault_tpm_enroll` and the demo playbook call `auth_method`, `tpm_auth_config`, `identity_tpm`, and `tpm_role` from https://github.com/drewmullen/hashicorp.vault. Those modules are not in the published `hashicorp.vault` collection yet. The enroll role still reads the auth role once so it can append this host's TPM id before calling `tpm_role`.
 
 Build these three in `hashicorp.vault`. The enroller role needs all three. `acl_policy` already covers policy HCL. Packages, files, proxy config, and systemd stay on `ansible.builtin`.
 

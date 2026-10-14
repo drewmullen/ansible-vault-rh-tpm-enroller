@@ -6,6 +6,12 @@
   become: true
   when: (vault_tpm_packages | length > 0) or (vault_tpm_install_swtpm | bool)
 
+- name: Install python3-requests for hashicorp.vault.identity_tpm
+  ansible.builtin.package:
+    name: python3-requests
+    state: present
+  become: true
+
 - name: Map the host architecture to a Vault release arch
   ansible.builtin.set_fact:
     vault_tpm_linux_arch: "{{ _arch_map[ansible_architecture] if (ansible_architecture in _arch_map) else ansible_architecture }}"

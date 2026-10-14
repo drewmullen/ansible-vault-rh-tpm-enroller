@@ -32,34 +32,16 @@
   when: vault_tpm_install_swtpm | bool
 
 - name: Enroll the host TPM
-  ansible.builtin.command:
-    argv: "{{ [vault_tpm_bin_path, 'tpm', 'enroll', '-name=' ~ vault_tpm_enroll_name, '-tpm-device-path=' ~ vault_tpm_device_path] + _metadata_flags }}"
-  vars:
-    _metadata_flags: >-
-      {{
-        (
-          vault_tpm_enroll_metadata.keys() | list
-          | zip(vault_tpm_enroll_metadata.values() | map('string') | list)
-        )
-        | map('join', '=')
-        | map('regex_replace', '^', '-metadata=')
-        | list
-      }}
-    _enroll_env: >-
-      {{
-        {
-          'VAULT_ADDR': vault_tpm_host_addr,
-          'VAULT_CACERT': vault_tpm_ca_cert_dest,
-          'VAULT_TOKEN': vault_tpm_effective_token
-        }
-        | combine({'VAULT_NAMESPACE': vault_tpm_namespace} if (vault_tpm_namespace | length > 0) else {})
-      }}
+  hashicorp.vault.identity_tpm:
+    url: "{{ vault_tpm_host_addr }}"
+    ca_cert: "{{ vault_tpm_ca_cert_dest }}"
+    auth_method: token
+    token: "{{ vault_tpm_effective_token }}"
+    namespace: "{{ vault_tpm_namespace if (vault_tpm_namespace | length > 0) else 'root' }}"
+    name: "{{ vault_tpm_enroll_name }}"
+    device_path: "{{ vault_tpm_device_path }}"
+    metadata: "{{ vault_tpm_enroll_metadata if (vault_tpm_enroll_metadata | length > 0) else omit }}"
+    state: present
   become: true
-  environment: "{{ _enroll_env }}"
   no_log: true
-  register: vault_tpm_enroll
-  changed_when:
-    - vault_tpm_enroll.rc == 0
-  failed_when:
-    - vault_tpm_enroll.rc != 0
-    - (vault_tpm_enroll.stdout | default('') ~ (vault_tpm_enroll.stderr | default(''))) is not search('(?i)already')
+  register: vault_tpm_identity

@@ -6,10 +6,20 @@ Two roles for Vault Enterprise TPM auth on Red Hat hosts.
 
 Neither role enables `auth/tpm`, writes `auth/<mount>/config`, or writes an ACL policy. Do that before enroll. The [demo](demo/README.md) playbook does it for a lab Vault.
 
+## Example Execution
+
+1 run installs 2 roles
+- tpm enroll
+- tpm proxy setup
+
+```bash
+ansible-playbook -i examples/inventory.yml examples/enroll.yml
+```
+
 ## Requirements
 
 - Ansible 2.16 or newer, with facts gathered.
-- `hashicorp.vault` 1.2.0 or newer for the demo policy task and for AppRole login: `ansible-galaxy collection install -r requirements.yml`
+- The `hashicorp.vault` fork that ships `auth_method`, `tpm_auth_config`, `identity_tpm`, and `tpm_role`: `ansible-galaxy collection install -r requirements.yml`
 - A Red Hat family host.
 - Vault Enterprise 2.2 or newer over HTTPS.
 - A Vault CA, as PEM text (`vault_tpm_ca_cert`) or a file on the controller (`vault_tpm_ca_cert_src`).
@@ -58,10 +68,3 @@ ansible-playbook -i examples/inventory.yml examples/enroll.yml
 ## Demo
 
 `demo/` builds a throwaway RHEL 9 instance and runs both roles. It is not for production. See [demo/README.md](demo/README.md).
-
-Run one role. Ansible tags each role's tasks with the role name.
-
-```bash
-ansible-playbook -i examples/inventory.yml examples/enroll.yml --tags vault_tpm_enroll
-ansible-playbook -i examples/inventory.yml examples/enroll.yml --tags vault_tpm_proxy
-```
