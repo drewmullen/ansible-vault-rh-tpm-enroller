@@ -1,0 +1,18 @@
+---
+- name: Install the proxy unit
+  ansible.builtin.template:
+    src: vault-proxy.service.j2
+    dest: "/etc/systemd/system/{{ vault_tpm_service_name }}.service"
+    owner: root
+    group: root
+    mode: "0644"
+  become: true
+  notify: Restart vault proxy
+
+- name: Enable the proxy service
+  ansible.builtin.systemd_service:
+    name: "{{ vault_tpm_service_name }}"
+    daemon_reload: true
+    enabled: "{{ vault_tpm_service_enabled }}"
+    state: "{{ vault_tpm_service_state }}"
+  become: true

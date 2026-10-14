@@ -1,0 +1,67 @@
+---
+- name: Install TPM packages
+  ansible.builtin.package:
+    name: "{{ vault_tpm_packages + (['swtpm'] if (vault_tpm_install_swtpm | bool) else []) }}"
+    state: present
+  become: true
+  when: (vault_tpm_packages | length > 0) or (vault_tpm_install_swtpm | bool)
+
+- name: Map the host architecture to a Vault release arch
+  ansible.builtin.set_fact:
+    vault_tpm_linux_arch: "{{ _arch_map[ansible_architecture] if (ansible_architecture in _arch_map) else ansible_architecture }}"
+  vars:
+    _arch_map:
+      x86_64: amd64
+      aarch64: arm64
+  when: vault_tpm_version | length > 0
+
+- name: Create the Vault unpack directory
+  ansible.builtin.file:
+    path: "/tmp/vault_{{ vault_tpm_version }}_linux_{{ vault_tpm_linux_arch }}"
+    state: directory
+    mode: "0755"
+  become: true
+  when: vault_tpm_version | length > 0
+
+- name: Download the Vault release archive
+  ansible.builtin.get_url:
+    url: "https://releases.hashicorp.com/vault/{{ vault_tpm_version }}/vault_{{ vault_tpm_version }}_linux_{{ vault_tpm_linux_arch }}.zip"
+    dest: "/tmp/vault_{{ vault_tpm_version }}_linux_{{ vault_tpm_linux_arch }}.zip"
+    mode: "0644"
+  become: true
+  when: vault_tpm_version | length > 0
+
+- name: Unpack the Vault binary
+  ansible.builtin.unarchive:
+    src: "/tmp/vault_{{ vault_tpm_version }}_linux_{{ vault_tpm_linux_arch }}.zip"
+    dest: "/tmp/vault_{{ vault_tpm_version }}_linux_{{ vault_tpm_linux_arch }}"
+    remote_src: true
+    creates: "/tmp/vault_{{ vault_tpm_version }}_linux_{{ vault_tpm_linux_arch }}/vault"
+  become: true
+  when: vault_tpm_version | length > 0
+
+- name: Install the Vault binary
+  ansible.builtin.copy:
+    src: "/tmp/vault_{{ vault_tpm_version }}_linux_{{ vault_tpm_linux_arch }}/vault"
+    dest: "{{ vault_tpm_bin_path }}"
+    remote_src: true
+    mode: "0755"
+    owner: root
+    group: root
+  become: true
+  when: vault_tpm_version | length > 0
+
+- name: Check for an existing Vault binary
+  ansible.builtin.stat:
+    path: "{{ vault_tpm_bin_path }}"
+  register: vault_tpm_bin_stat
+  when: vault_tpm_version | length == 0
+
+- name: Require Vault when no version is requested
+  ansible.builtin.fail:
+    msg: >-
+      vault_tpm_version is empty and {{ vault_tpm_bin_path }} is not on this host.
+      Set vault_tpm_version or install the vault binary before enrolling.
+  when:
+    - vault_tpm_version | length == 0
+    - not vault_tpm_bin_stat.stat.exists

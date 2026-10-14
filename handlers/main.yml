@@ -1,0 +1,15 @@
+---
+- name: Restart swtpm
+  ansible.builtin.systemd_service:
+    name: swtpm
+    state: restarted
+    daemon_reload: true
+  become: true
+
+- name: Restart vault proxy
+  ansible.builtin.systemd_service:
+    name: "{{ vault_tpm_service_name }}"
+    state: restarted
+    daemon_reload: true
+  become: true
+  when: vault_tpm_service_state == "started"

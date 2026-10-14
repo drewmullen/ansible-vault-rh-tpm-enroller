@@ -1,0 +1,6 @@
+---
+# Internal values. Callers override defaults/main.yml, not these.
+
+vault_tpm_auth_path_normalized: "{{ vault_tpm_auth_path | regex_replace('/+$', '') }}"
+vault_tpm_socket_path: "{{ vault_tpm_socket_dir }}/{{ vault_tpm_proxy_user }}.sock"
+vault_tpm_effective_token_policies: "{{ (([vault_tpm_policy_name] if (vault_tpm_policy_hcl | default('') | length > 0) else []) + (vault_tpm_token_policies | default([]))) | unique | list }}"

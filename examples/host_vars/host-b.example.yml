@@ -1,0 +1,4 @@
+---
+vault_tpm_enroll_name: host-b-lab
+vault_tpm_device_path: /var/lib/swtpm/tpm.sock
+vault_tpm_install_swtpm: true

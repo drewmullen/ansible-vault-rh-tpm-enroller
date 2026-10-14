@@ -1,0 +1,3 @@
+---
+vault_tpm_enroll_name: host-a-tpm
+vault_tpm_device_path: /dev/tpmrm0

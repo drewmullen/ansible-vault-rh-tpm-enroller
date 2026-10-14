@@ -1,0 +1,27 @@
+# macOS
+.DS_Store
+
+# Ansible
+*.retry
+.ansible/
+
+# Python
+__pycache__/
+*.py[cod]
+
+# Terraform local state and providers
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Lab secrets and generated local material
+*.pem
+*.hclic
+vault-init.json
+terraform/vault.crt

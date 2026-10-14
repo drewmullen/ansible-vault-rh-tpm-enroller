@@ -1,0 +1,13 @@
+---
+# Group-level settings live in examples/group_vars/app_hosts.yml:
+# the shared auth role name and the policy every host in the group receives.
+# Host-level overrides live in examples/host_vars/:
+# vault_tpm_enroll_name and vault_tpm_device_path, one TPM per host.
+#
+# ansible-playbook -i examples/inventory.yml examples/enroll.yml
+- name: Enroll application hosts with Vault TPM auth
+  hosts: app_hosts
+  gather_facts: true
+  become: true
+  roles:
+    - role: vault_tpm_enroller

@@ -1,0 +1,46 @@
+vault {
+  address = "{{ vault_tpm_proxy_addr }}"
+  ca_cert = "{{ vault_tpm_ca_cert_dest }}"
+}
+
+tpm_cert "{{ vault_tpm_cert_name }}" {
+  mount_path = "auth/{{ vault_tpm_auth_path_normalized }}"
+  role_name  = "{{ vault_tpm_role_name }}"
+  tpm {
+    device_path = "{{ vault_tpm_device_path }}"
+  }
+  renew {
+    percent_renew_before_expiry = {{ vault_tpm_renew_percent }}
+    min_backoff                 = "{{ vault_tpm_renew_min_backoff }}"
+    max_backoff                 = "{{ vault_tpm_renew_max_backoff }}"
+  }
+  csr {
+    CN = "{{ vault_tpm_csr_cn }}"
+  }
+  destination {
+    path  = "{{ vault_tpm_cert_dir }}"
+    umask = "077"
+  }
+}
+
+auto_auth {
+  method "tpm" {
+    mount_path = "auth/{{ vault_tpm_auth_path_normalized }}"
+    config = {
+      tpm_cert  = "{{ vault_tpm_cert_name }}"
+      role_name = "{{ vault_tpm_role_name }}"
+    }
+  }
+}
+
+api_proxy {
+  use_auto_auth_token = "{{ vault_tpm_use_auto_auth_token }}"
+}
+
+listener "unix" {
+  address      = "{{ vault_tpm_socket_path }}"
+  socket_mode  = "{{ vault_tpm_socket_mode }}"
+  socket_user  = "{{ vault_tpm_proxy_user }}"
+  socket_group = "{{ vault_tpm_proxy_user }}"
+  tls_disable  = true
+}

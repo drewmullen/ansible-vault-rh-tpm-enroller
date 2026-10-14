@@ -1,0 +1,25 @@
+---
+- name: Apply proxy changes before the socket read
+  ansible.builtin.meta: flush_handlers
+  when: vault_tpm_verify_path | length > 0
+
+- name: Read the verify path through the proxy socket
+  ansible.builtin.command:
+    argv:
+      - env
+      - -u
+      - VAULT_TOKEN
+      - "{{ vault_tpm_bin_path }}"
+      - kv
+      - get
+      - -format=json
+      - "{{ vault_tpm_verify_path }}"
+  environment:
+    VAULT_ADDR: "unix://{{ vault_tpm_socket_path }}"
+  become: true
+  become_user: "{{ vault_tpm_proxy_user }}"
+  register: vault_tpm_verify
+  changed_when: false
+  failed_when: vault_tpm_verify.rc != 0
+  no_log: true
+  when: vault_tpm_verify_path | length > 0

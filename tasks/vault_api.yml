@@ -1,0 +1,182 @@
+---
+# Vault API calls run on the controller. The managed node uses vault_tpm_proxy_addr.
+
+- name: Stage Vault CA content on the controller
+  when: vault_tpm_ca_cert | length > 0
+  block:
+    - name: Create a temporary CA file on the controller
+      ansible.builtin.tempfile:
+        state: file
+        suffix: vault-ca.pem
+      register: vault_tpm_ca_temp
+      delegate_to: localhost
+      become: false
+
+    - name: Write Vault CA content on the controller
+      ansible.builtin.copy:
+        content: "{{ vault_tpm_ca_cert }}"
+        dest: "{{ vault_tpm_ca_temp.path }}"
+        mode: "0600"
+      delegate_to: localhost
+      become: false
+
+- name: Record the controller CA path
+  ansible.builtin.set_fact:
+    vault_tpm_controller_ca_path: "{{ vault_tpm_ca_temp.path if (vault_tpm_ca_cert | length > 0) else vault_tpm_ca_cert_src }}"
+
+- name: Read Vault health
+  ansible.builtin.uri:
+    url: "{{ vault_tpm_api_addr }}/v1/sys/health"
+    method: GET
+    ca_path: "{{ vault_tpm_controller_ca_path }}"
+    status_code:
+      - 200
+      - 429
+      - 472
+      - 473
+      - 501
+      - 503
+    return_content: true
+    timeout: 30
+    headers: "{{ {'X-Vault-Namespace': vault_tpm_namespace} if (vault_tpm_namespace | length > 0) else {} }}"
+  register: vault_tpm_health
+  delegate_to: localhost
+  become: false
+
+- name: Require Vault Enterprise 2.2 or newer
+  vars:
+    _raw: "{{ vault_tpm_health.json.version | default('') }}"
+    _stripped: "{{ _raw | regex_replace('^v', '') }}"
+    _numeric: "{{ _stripped | regex_replace('[+-].*$', '') }}"
+    _parts: "{{ _numeric.split('.') }}"
+    _major: "{{ _parts[0] | default('0') | int }}"
+    _minor: "{{ _parts[1] | default('0') | int }}"
+  ansible.builtin.assert:
+    that:
+      - _raw | length > 0
+      - "'ent' in (_stripped | lower)"
+      - (_major | int) > 2 or ((_major | int) == 2 and (_minor | int) >= 2)
+    fail_msg: >-
+      Vault at {{ vault_tpm_api_addr }} must be Enterprise 2.2 or newer.
+      The version string must contain "ent".
+      The health endpoint reported {{ _raw if (_raw | length > 0) else 'no version' }}.
+
+- name: Log in with AppRole
+  hashicorp.vault.auth_login:
+    url: "{{ vault_tpm_api_addr }}"
+    auth_method: approle
+    namespace: "{{ vault_tpm_namespace if (vault_tpm_namespace | length > 0) else omit }}"
+    auth_params:
+      role_id: "{{ vault_tpm_role_id }}"
+      secret_id: "{{ vault_tpm_secret_id }}"
+  register: vault_tpm_approle_login
+  changed_when: false
+  no_log: true
+  delegate_to: localhost
+  become: false
+  environment:
+    REQUESTS_CA_BUNDLE: "{{ vault_tpm_controller_ca_path }}"
+    SSL_CERT_FILE: "{{ vault_tpm_controller_ca_path }}"
+  when: vault_tpm_token | length == 0
+
+- name: Record the admin token
+  ansible.builtin.set_fact:
+    vault_tpm_effective_token: "{{ vault_tpm_token if (vault_tpm_token | length > 0) else vault_tpm_approle_login.token_id }}"
+  no_log: true
+
+- name: Build Vault API headers
+  ansible.builtin.set_fact:
+    vault_tpm_api_headers: "{{ _headers }}"
+  vars:
+    _headers: >-
+      {{
+        {'X-Vault-Token': vault_tpm_effective_token}
+        | combine({'X-Vault-Namespace': vault_tpm_namespace} if (vault_tpm_namespace | length > 0) else {})
+      }}
+  no_log: true
+
+- name: List auth mounts
+  ansible.builtin.uri:
+    url: "{{ vault_tpm_api_addr }}/v1/sys/auth"
+    method: GET
+    ca_path: "{{ vault_tpm_controller_ca_path }}"
+    headers: "{{ vault_tpm_api_headers }}"
+    status_code: 200
+    return_content: true
+    timeout: 30
+  register: vault_tpm_auth_mounts
+  no_log: true
+  delegate_to: localhost
+  become: false
+
+- name: Enable the TPM auth mount when it is absent
+  ansible.builtin.uri:
+    url: "{{ vault_tpm_api_addr }}/v1/sys/auth/{{ vault_tpm_auth_path_normalized }}"
+    method: POST
+    ca_path: "{{ vault_tpm_controller_ca_path }}"
+    headers: "{{ vault_tpm_api_headers }}"
+    body_format: json
+    body:
+      type: tpm
+      description: "{{ vault_tpm_auth_description }}"
+    status_code:
+      - 200
+      - 204
+    timeout: 30
+  no_log: true
+  delegate_to: localhost
+  become: false
+  when: (vault_tpm_auth_path_normalized ~ '/') not in (vault_tpm_auth_mounts.json.data | default({}))
+
+- name: Read the TPM auth backend config
+  ansible.builtin.uri:
+    url: "{{ vault_tpm_api_addr }}/v1/auth/{{ vault_tpm_auth_path_normalized }}/config"
+    method: GET
+    ca_path: "{{ vault_tpm_controller_ca_path }}"
+    headers: "{{ vault_tpm_api_headers }}"
+    status_code:
+      - 200
+      - 204
+      - 404
+    return_content: true
+    timeout: 30
+  register: vault_tpm_auth_config
+  no_log: true
+  delegate_to: localhost
+  become: false
+
+- name: Create the TPM auth CA when the backend config is absent
+  ansible.builtin.uri:
+    url: "{{ vault_tpm_api_addr }}/v1/auth/{{ vault_tpm_auth_path_normalized }}/config"
+    method: POST
+    ca_path: "{{ vault_tpm_controller_ca_path }}"
+    headers: "{{ vault_tpm_api_headers }}"
+    body_format: json
+    body:
+      ca_lifetime: "{{ vault_tpm_ca_lifetime }}"
+      ca_soft_expiry: "{{ vault_tpm_ca_soft_expiry }}"
+    status_code:
+      - 200
+      - 204
+    timeout: 30
+  no_log: true
+  delegate_to: localhost
+  become: false
+  when: vault_tpm_auth_config.status == 404
+
+- name: Write the ACL policy
+  hashicorp.vault.acl_policy:
+    url: "{{ vault_tpm_api_addr }}"
+    auth_method: token
+    token: "{{ vault_tpm_effective_token }}"
+    ca_cert: "{{ vault_tpm_controller_ca_path }}"
+    # The module defaults namespace to admin and always sends X-Vault-Namespace.
+    # root selects the root namespace when vault_tpm_namespace is empty.
+    namespace: "{{ vault_tpm_namespace if (vault_tpm_namespace | length > 0) else 'root' }}"
+    name: "{{ vault_tpm_policy_name }}"
+    policy: "{{ vault_tpm_policy_hcl }}"
+    state: present
+  no_log: true
+  delegate_to: localhost
+  become: false
+  when: vault_tpm_policy_hcl | length > 0

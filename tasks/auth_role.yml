@@ -1,0 +1,119 @@
+# Vault 2.2 TPM roles require tpm_ids or tpmgroup_ids. The id exists only
+# after this host is enrolled, so the role is written here rather than with
+# the mount and policy.
+
+- name: Record the TPM id returned by enroll
+  ansible.builtin.set_fact:
+    vault_tpm_enrolled_id: "{{ (vault_tpm_enroll.stdout | from_json).id }}"
+  when: vault_tpm_enroll.stdout | default('') is regex('^\s*\{')
+
+- name: List enrolled TPM ids
+  ansible.builtin.uri:
+    url: "{{ vault_tpm_api_addr }}/v1/identity/tpm/id?list=true"
+    method: GET
+    ca_path: "{{ vault_tpm_controller_ca_path }}"
+    headers: "{{ vault_tpm_api_headers }}"
+    status_code:
+      - 200
+      - 404
+    return_content: true
+    timeout: 30
+  register: vault_tpm_id_list
+  no_log: true
+  delegate_to: localhost
+  become: false
+  when: vault_tpm_enrolled_id | default('') | length == 0
+
+- name: Read enrolled TPM records
+  ansible.builtin.uri:
+    url: "{{ vault_tpm_api_addr }}/v1/identity/tpm/id/{{ item }}"
+    method: GET
+    ca_path: "{{ vault_tpm_controller_ca_path }}"
+    headers: "{{ vault_tpm_api_headers }}"
+    status_code: 200
+    return_content: true
+    timeout: 30
+  loop: "{{ (vault_tpm_id_list.json.data['keys'] | default([])) if (vault_tpm_id_list.json is defined) else [] }}"
+  register: vault_tpm_records
+  no_log: true
+  delegate_to: localhost
+  become: false
+  when: vault_tpm_enrolled_id | default('') | length == 0
+
+- name: Record the TPM id that matches this enroll name
+  ansible.builtin.set_fact:
+    vault_tpm_enrolled_id: "{{ _match }}"
+  vars:
+    _match: >-
+      {{
+        vault_tpm_records.results
+        | default([])
+        | selectattr('json.data.name', 'equalto', vault_tpm_enroll_name)
+        | map(attribute='json.data.id')
+        | first
+        | default('')
+      }}
+  when: vault_tpm_enrolled_id | default('') | length == 0
+
+- name: Require an enrolled TPM id
+  ansible.builtin.fail:
+    msg: >-
+      Enrollment did not return a TPM id for {{ vault_tpm_enroll_name }}.
+      A TPM auth role needs tpm_ids or tpmgroup_ids.
+  when: vault_tpm_enrolled_id | default('') | length == 0
+
+- name: Read the auth role
+  ansible.builtin.uri:
+    url: "{{ vault_tpm_api_addr }}/v1/auth/{{ vault_tpm_auth_path_normalized }}/role/{{ vault_tpm_role_name }}"
+    method: GET
+    ca_path: "{{ vault_tpm_controller_ca_path }}"
+    headers: "{{ vault_tpm_api_headers }}"
+    status_code:
+      - 200
+      - 404
+    return_content: true
+    timeout: 30
+  register: vault_tpm_auth_role_read
+  no_log: true
+  delegate_to: localhost
+  become: false
+
+- name: Build the desired auth role body
+  ansible.builtin.set_fact:
+    vault_tpm_auth_role_body: >-
+      {{
+        {
+          'token_policies': vault_tpm_effective_token_policies,
+          'token_no_default_policy': vault_tpm_token_no_default_policy | bool
+        }
+        | combine({'token_ttl': vault_tpm_token_ttl} if ((vault_tpm_token_ttl | string | length) > 0) else {})
+        | combine({'token_max_ttl': vault_tpm_token_max_ttl} if ((vault_tpm_token_max_ttl | string | length) > 0) else {})
+        | combine({'token_period': vault_tpm_token_period} if ((vault_tpm_token_period | string | length) > 0) else {})
+        | combine({'token_type': vault_tpm_token_type} if ((vault_tpm_token_type | string | length) > 0) else {})
+        | combine({'token_bound_cidrs': vault_tpm_token_bound_cidrs} if (vault_tpm_token_bound_cidrs | length > 0) else {})
+        | combine(vault_tpm_role_config | default({}))
+        | combine({'tpm_ids': _tpm_ids})
+      }}
+  vars:
+    _existing_ids: "{{ vault_tpm_auth_role_read.json.data.tpm_ids | default([]) }}"
+    _config_ids: "{{ vault_tpm_role_config.tpm_ids | default([]) }}"
+    _tpm_ids: "{{ (_existing_ids + _config_ids + [vault_tpm_enrolled_id]) | unique | list }}"
+
+- name: Write the auth role when it is missing or different
+  ansible.builtin.uri:
+    url: "{{ vault_tpm_api_addr }}/v1/auth/{{ vault_tpm_auth_path_normalized }}/role/{{ vault_tpm_role_name }}"
+    method: POST
+    ca_path: "{{ vault_tpm_controller_ca_path }}"
+    headers: "{{ vault_tpm_api_headers }}"
+    body_format: json
+    body: "{{ vault_tpm_auth_role_body }}"
+    status_code:
+      - 200
+      - 204
+    timeout: 30
+  no_log: true
+  delegate_to: localhost
+  become: false
+  when: >-
+    vault_tpm_auth_role_read.status == 404
+    or (vault_tpm_auth_role_body | vault_tpm_role_differs(vault_tpm_auth_role_read.json.data | default({})))
