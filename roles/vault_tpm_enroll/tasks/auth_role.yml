@@ -1,6 +1,7 @@
+---
 # Vault 2.2 TPM roles require tpm_ids or tpmgroup_ids. The id exists only
-# after this host is enrolled, so the role is written here rather than with
-# the mount and policy.
+# after this host is enrolled, so the role is written here. The mount, the
+# auth CA, and the ACL policies already exist.
 
 - name: Record the TPM id returned by enroll
   ansible.builtin.set_fact:

@@ -1,12 +1,8 @@
 ---
-# Shared by every host in app_hosts. Host vars override the TPM identity.
+# Shared by every host in app_hosts. The named policies must already exist.
 vault_tpm_api_addr: https://vault.example.com:8200
 vault_tpm_role_name: app-hosts
-vault_tpm_policy_name: app-read
-vault_tpm_policy_hcl: |
-  path "secret/data/app/*" {
-    capabilities = ["read"]
-  }
 vault_tpm_token_policies:
+  - app-read
   - audit-read
 vault_tpm_ca_cert_src: files/vault-ca.pem

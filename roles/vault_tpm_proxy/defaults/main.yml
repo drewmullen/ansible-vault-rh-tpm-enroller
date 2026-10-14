@@ -1,0 +1,31 @@
+---
+vault_tpm_proxy_addr: "{{ lookup('env', 'VAULT_ADDR') | default('', true) }}"
+vault_tpm_role_name: ""
+vault_tpm_auth_path: tpm
+vault_tpm_namespace: ""
+
+vault_tpm_proxy_user: vault-proxy
+vault_tpm_proxy_config_path: /etc/vault-proxy/tpm.hcl
+vault_tpm_ca_cert: ""
+vault_tpm_ca_cert_src: ""
+vault_tpm_ca_cert_dest: /etc/vault-proxy/ca.pem
+vault_tpm_cert_dir: "/var/lib/vault-proxy/{{ vault_tpm_proxy_user }}/tpm"
+vault_tpm_cert_name: host_identity
+vault_tpm_enroll_name: "{{ inventory_hostname }}"
+vault_tpm_csr_cn: "{{ vault_tpm_enroll_name }}"
+vault_tpm_device_path: /dev/tpmrm0
+vault_tpm_renew_percent: 20
+vault_tpm_renew_min_backoff: 5s
+vault_tpm_renew_max_backoff: 5m
+vault_tpm_use_auto_auth_token: force
+vault_tpm_socket_dir: /run/vault-proxy
+vault_tpm_socket_mode: "600"
+vault_tpm_proxy_config: ""
+
+vault_tpm_service_name: vault-proxy
+vault_tpm_service_enabled: true
+vault_tpm_service_state: started
+
+vault_tpm_version: ""
+vault_tpm_bin_path: /usr/local/bin/vault
+vault_tpm_verify_path: ""

@@ -1,0 +1,85 @@
+---
+# One-time Vault setup for the lab. The host roles do not do this.
+
+- name: Log in to Vault
+  ansible.builtin.import_role:
+    name: vault_tpm_enroll
+    tasks_from: session.yml
+
+- name: Record the auth mount path
+  ansible.builtin.set_fact:
+    vault_tpm_auth_path_normalized: "{{ vault_tpm_auth_path | default('tpm') | regex_replace('/+$', '') }}"
+
+- name: List auth mounts
+  ansible.builtin.uri:
+    url: "{{ vault_tpm_api_addr }}/v1/sys/auth"
+    method: GET
+    ca_path: "{{ vault_tpm_controller_ca_path }}"
+    headers: "{{ vault_tpm_api_headers }}"
+    status_code: 200
+    return_content: true
+    timeout: 30
+  register: vault_tpm_auth_mounts
+  no_log: true
+
+- name: Enable the TPM auth mount when it is absent
+  ansible.builtin.uri:
+    url: "{{ vault_tpm_api_addr }}/v1/sys/auth/{{ vault_tpm_auth_path_normalized }}"
+    method: POST
+    ca_path: "{{ vault_tpm_controller_ca_path }}"
+    headers: "{{ vault_tpm_api_headers }}"
+    body_format: json
+    body:
+      type: tpm
+      description: "{{ vault_tpm_auth_description | default('TPM auth') }}"
+    status_code:
+      - 200
+      - 204
+    timeout: 30
+  no_log: true
+  when: (vault_tpm_auth_path_normalized ~ '/') not in (vault_tpm_auth_mounts.json.data | default({}))
+
+- name: Read the TPM auth backend config
+  ansible.builtin.uri:
+    url: "{{ vault_tpm_api_addr }}/v1/auth/{{ vault_tpm_auth_path_normalized }}/config"
+    method: GET
+    ca_path: "{{ vault_tpm_controller_ca_path }}"
+    headers: "{{ vault_tpm_api_headers }}"
+    status_code:
+      - 200
+      - 204
+      - 404
+    return_content: true
+    timeout: 30
+  register: vault_tpm_auth_config
+  no_log: true
+
+- name: Create the TPM auth CA when the backend config is absent
+  ansible.builtin.uri:
+    url: "{{ vault_tpm_api_addr }}/v1/auth/{{ vault_tpm_auth_path_normalized }}/config"
+    method: POST
+    ca_path: "{{ vault_tpm_controller_ca_path }}"
+    headers: "{{ vault_tpm_api_headers }}"
+    body_format: json
+    body:
+      ca_lifetime: "{{ vault_tpm_ca_lifetime | default('8760h') }}"
+      ca_soft_expiry: "{{ vault_tpm_ca_soft_expiry | default('720h') }}"
+    status_code:
+      - 200
+      - 204
+    timeout: 30
+  no_log: true
+  when: vault_tpm_auth_config.status == 404
+
+- name: Write the ACL policy
+  hashicorp.vault.acl_policy:
+    url: "{{ vault_tpm_api_addr }}"
+    auth_method: token
+    token: "{{ vault_tpm_effective_token }}"
+    ca_cert: "{{ vault_tpm_controller_ca_path }}"
+    namespace: "{{ vault_tpm_namespace | default('') if ((vault_tpm_namespace | default('')) | length > 0) else 'root' }}"
+    name: "{{ vault_tpm_policy_name }}"
+    policy: "{{ vault_tpm_policy_hcl }}"
+    state: present
+  no_log: true
+  when: vault_tpm_policy_hcl | default('') | length > 0

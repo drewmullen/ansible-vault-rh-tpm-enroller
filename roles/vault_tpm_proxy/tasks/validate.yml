@@ -5,13 +5,13 @@
       - ansible_os_family is defined
       - ansible_architecture is defined
     fail_msg: >-
-      Gather facts before vault_tpm_enroller.
+      Gather facts before vault_tpm_proxy.
       The role needs ansible_os_family and ansible_architecture.
 
 - name: Require a Red Hat family host
   ansible.builtin.fail:
     msg: >-
-      vault_tpm_enroller supports the Red Hat family only
+      vault_tpm_proxy supports the Red Hat family only
       (ansible_os_family=RedHat). This host reports {{ ansible_os_family }}.
   when: ansible_os_family != "RedHat"
 
@@ -19,17 +19,12 @@
   ansible.builtin.set_fact:
     vault_tpm_missing_inputs: "{{ _missing }}"
   vars:
-    _api: "{{ vault_tpm_api_addr | default('') }}"
-    _missing_api: "{{ ['vault_tpm_api_addr'] if (_api | length == 0) else (['vault_tpm_api_addr must start with https://'] if (_api is not match('^https://')) else []) }}"
+    _addr: "{{ vault_tpm_proxy_addr | default('') }}"
+    _missing_addr: "{{ ['vault_tpm_proxy_addr'] if (_addr | length == 0) else (['vault_tpm_proxy_addr must start with https://'] if (_addr is not match('^https://')) else []) }}"
     _missing_role: "{{ ['vault_tpm_role_name'] if (vault_tpm_role_name | default('') | length == 0) else [] }}"
-    _has_token: "{{ (vault_tpm_token | default('') | length) > 0 }}"
-    _has_approle: "{{ (vault_tpm_role_id | default('') | length > 0) and (vault_tpm_secret_id | default('') | length > 0) }}"
-    _missing_auth: "{{ [] if ((_has_token | bool) or (_has_approle | bool)) else ['vault_tpm_token or vault_tpm_role_id and vault_tpm_secret_id'] }}"
-    _has_policy: "{{ (vault_tpm_policy_hcl | default('') | length > 0) or ((vault_tpm_token_policies | default([])) | length > 0) }}"
-    _missing_policy: "{{ [] if (_has_policy | bool) else ['vault_tpm_policy_hcl or vault_tpm_token_policies'] }}"
     _has_ca: "{{ (vault_tpm_ca_cert | default('') | length > 0) or (vault_tpm_ca_cert_src | default('') | length > 0) }}"
     _missing_ca: "{{ [] if (_has_ca | bool) else ['vault_tpm_ca_cert or vault_tpm_ca_cert_src'] }}"
-    _missing: "{{ _missing_api + _missing_role + _missing_auth + _missing_policy + _missing_ca }}"
+    _missing: "{{ _missing_addr + _missing_role + _missing_ca }}"
 
 - name: Fail when required inputs are missing
   ansible.builtin.fail:

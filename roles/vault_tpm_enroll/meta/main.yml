@@ -1,0 +1,15 @@
+---
+galaxy_info:
+  role_name: vault_tpm_enroll
+  author: vault_tpm_enroll
+  description: >-
+    Enroll a host TPM with Vault Enterprise and append its id to an existing
+    TPM auth role.
+  license: GPL-3.0-or-later
+  min_ansible_version: "2.16"
+  platforms:
+    - name: EL
+      versions:
+        - all
+
+dependencies: []

@@ -1,6 +1,6 @@
 # Vault TPM enroller role
 
-Ansible role that enrolls a host TPM with Vault Enterprise TPM auth, writes the auth role, installs Vault Proxy with TPM auto-auth, and enables that proxy under systemd.
+The implementation is two roles, `vault_tpm_enroll` and `vault_tpm_proxy`. Enabling `auth/tpm`, writing `auth/<mount>/config`, and writing the ACL policy are demo steps in `demo/playbook.yml`, not role tasks. `vault_tpm_enroll` enrolls the TPM and appends `tpm_ids` on the auth role. `vault_tpm_proxy` installs the proxy.
 
 One play targets many hosts. Hosts that should receive the same token share one auth role and one policy set. Each host enrolls its own TPM. The role does not create a demo policy, a demo secret, or a KV mount.
 

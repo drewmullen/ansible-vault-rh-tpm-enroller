@@ -1,0 +1,21 @@
+---
+# Lab only. Enables TPM auth, writes the demo policy, enrolls the host, then starts the proxy.
+
+- name: Prepare Vault TPM auth
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    # hashicorp.vault imports requests. Use the interpreter that launched Ansible.
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+  tasks:
+    - name: Enable the mount, create the auth CA, and write the policy
+      ansible.builtin.import_tasks: tasks/bootstrap.yml
+
+- name: Enroll the TPM and install Vault Proxy
+  hosts: demo
+  gather_facts: true
+  become: true
+  roles:
+    - role: vault_tpm_enroll
+    - role: vault_tpm_proxy

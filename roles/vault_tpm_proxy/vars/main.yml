@@ -1,0 +1,3 @@
+---
+vault_tpm_auth_path_normalized: "{{ vault_tpm_auth_path | regex_replace('/+$', '') }}"
+vault_tpm_socket_path: "{{ vault_tpm_socket_dir }}/{{ vault_tpm_proxy_user }}.sock"

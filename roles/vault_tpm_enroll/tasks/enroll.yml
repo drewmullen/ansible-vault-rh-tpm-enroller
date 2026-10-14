@@ -3,8 +3,8 @@
   ansible.builtin.file:
     path: "{{ vault_tpm_device_path | dirname }}"
     state: directory
-    owner: "{{ vault_tpm_proxy_user }}"
-    group: "{{ vault_tpm_proxy_user }}"
+    owner: tss
+    group: tss
     mode: "0750"
   become: true
   when:
@@ -19,9 +19,7 @@
     group: root
     mode: "0644"
   become: true
-  notify:
-    - Restart swtpm
-    - Restart vault proxy
+  notify: Restart swtpm
   when: vault_tpm_install_swtpm | bool
 
 - name: Enable and start swtpm
@@ -50,14 +48,13 @@
     _enroll_env: >-
       {{
         {
-          'VAULT_ADDR': vault_tpm_proxy_addr,
+          'VAULT_ADDR': vault_tpm_host_addr,
           'VAULT_CACERT': vault_tpm_ca_cert_dest,
           'VAULT_TOKEN': vault_tpm_effective_token
         }
         | combine({'VAULT_NAMESPACE': vault_tpm_namespace} if (vault_tpm_namespace | length > 0) else {})
       }}
   become: true
-  become_user: "{{ vault_tpm_proxy_user }}"
   environment: "{{ _enroll_env }}"
   no_log: true
   register: vault_tpm_enroll

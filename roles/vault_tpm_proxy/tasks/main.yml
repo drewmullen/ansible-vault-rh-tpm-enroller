@@ -2,20 +2,11 @@
 - name: Validate inputs
   ansible.builtin.import_tasks: validate.yml
 
-- name: Configure Vault
-  ansible.builtin.import_tasks: vault_api.yml
-
 - name: Install host packages
   ansible.builtin.import_tasks: install.yml
 
 - name: Configure the proxy
   ansible.builtin.import_tasks: proxy_config.yml
-
-- name: Enroll the TPM
-  ansible.builtin.import_tasks: enroll.yml
-
-- name: Write the TPM auth role
-  ansible.builtin.import_tasks: auth_role.yml
 
 - name: Install the proxy service
   ansible.builtin.import_tasks: service.yml

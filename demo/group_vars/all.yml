@@ -1,0 +1,19 @@
+---
+# Lab values. vault_tpm_api_addr and the admin token come from VAULT_ADDR and VAULT_TOKEN.
+vault_tpm_role_name: app-hosts
+vault_tpm_policy_name: app-read
+vault_tpm_policy_hcl: |
+  path "secret/data/tpm-test" {
+    capabilities = ["read"]
+  }
+vault_tpm_token_policies:
+  - app-read
+vault_tpm_auth_path: tpm
+vault_tpm_auth_description: TPM auth demo
+vault_tpm_ca_lifetime: 8760h
+vault_tpm_ca_soft_expiry: 720h
+vault_tpm_host_addr: https://127.0.0.1:8200
+vault_tpm_proxy_addr: https://127.0.0.1:8200
+vault_tpm_ca_cert_src: "{{ playbook_dir }}/terraform/vault.crt"
+vault_tpm_verify_path: secret/tpm-test
+vault_tpm_enroll_name: vault-tpm-enroller

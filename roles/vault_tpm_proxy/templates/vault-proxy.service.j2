@@ -1,9 +1,6 @@
 [Unit]
 Description=Vault Proxy with TPM auto-auth
 After=network-online.target
-{% if vault_tpm_install_swtpm | bool %}
-After=swtpm.service
-{% endif %}
 Wants=network-online.target
 
 [Service]

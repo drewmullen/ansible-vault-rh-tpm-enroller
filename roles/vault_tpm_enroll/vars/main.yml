@@ -1,0 +1,3 @@
+---
+vault_tpm_auth_path_normalized: "{{ vault_tpm_auth_path | regex_replace('/+$', '') }}"
+vault_tpm_effective_token_policies: "{{ vault_tpm_token_policies | default([]) | unique | list }}"

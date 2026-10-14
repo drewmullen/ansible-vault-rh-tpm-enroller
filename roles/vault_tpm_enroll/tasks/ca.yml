@@ -1,0 +1,29 @@
+---
+- name: Create the CA directory
+  ansible.builtin.file:
+    path: "{{ vault_tpm_ca_cert_dest | dirname }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  become: true
+
+- name: Install the Vault CA from content
+  ansible.builtin.copy:
+    content: "{{ vault_tpm_ca_cert }}"
+    dest: "{{ vault_tpm_ca_cert_dest }}"
+    owner: root
+    group: root
+    mode: "0644"
+  become: true
+  when: vault_tpm_ca_cert | length > 0
+
+- name: Install the Vault CA from the controller
+  ansible.builtin.copy:
+    src: "{{ vault_tpm_ca_cert_src }}"
+    dest: "{{ vault_tpm_ca_cert_dest }}"
+    owner: root
+    group: root
+    mode: "0644"
+  become: true
+  when: vault_tpm_ca_cert | length == 0

@@ -1,10 +1,10 @@
 [Unit]
 Description=Software TPM socket for Vault enrollment
-Before={{ vault_tpm_service_name }}.service
+Before=vault-proxy.service
 
 [Service]
-User={{ vault_tpm_proxy_user }}
-Group={{ vault_tpm_proxy_user }}
+User=tss
+Group=tss
 StateDirectory=swtpm
 ExecStart=/usr/bin/swtpm socket --tpm2 --tpmstate dir=/var/lib/swtpm --server type=unixio,path={{ vault_tpm_device_path }} --ctrl type=unixio,path={{ vault_tpm_device_path }}.ctrl --flags not-need-init,startup-clear
 

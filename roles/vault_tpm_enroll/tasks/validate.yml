@@ -1,0 +1,38 @@
+---
+- name: Require gathered facts
+  ansible.builtin.assert:
+    that:
+      - ansible_os_family is defined
+      - ansible_architecture is defined
+    fail_msg: >-
+      Gather facts before vault_tpm_enroll.
+      The role needs ansible_os_family and ansible_architecture.
+
+- name: Require a Red Hat family host
+  ansible.builtin.fail:
+    msg: >-
+      vault_tpm_enroll supports the Red Hat family only
+      (ansible_os_family=RedHat). This host reports {{ ansible_os_family }}.
+  when: ansible_os_family != "RedHat"
+
+- name: Record which required inputs are missing
+  ansible.builtin.set_fact:
+    vault_tpm_missing_inputs: "{{ _missing }}"
+  vars:
+    _api: "{{ vault_tpm_api_addr | default('') }}"
+    _missing_api: "{{ ['vault_tpm_api_addr'] if (_api | length == 0) else (['vault_tpm_api_addr must start with https://'] if (_api is not match('^https://')) else []) }}"
+    _host: "{{ vault_tpm_host_addr | default('') }}"
+    _missing_host: "{{ ['vault_tpm_host_addr'] if (_host | length == 0) else (['vault_tpm_host_addr must start with https://'] if (_host is not match('^https://')) else []) }}"
+    _missing_role: "{{ ['vault_tpm_role_name'] if (vault_tpm_role_name | default('') | length == 0) else [] }}"
+    _has_token: "{{ (vault_tpm_token | default('') | length) > 0 }}"
+    _has_approle: "{{ (vault_tpm_role_id | default('') | length > 0) and (vault_tpm_secret_id | default('') | length > 0) }}"
+    _missing_auth: "{{ [] if ((_has_token | bool) or (_has_approle | bool)) else ['vault_tpm_token or vault_tpm_role_id and vault_tpm_secret_id'] }}"
+    _missing_policies: "{{ [] if ((vault_tpm_token_policies | default([])) | length > 0) else ['vault_tpm_token_policies'] }}"
+    _has_ca: "{{ (vault_tpm_ca_cert | default('') | length > 0) or (vault_tpm_ca_cert_src | default('') | length > 0) }}"
+    _missing_ca: "{{ [] if (_has_ca | bool) else ['vault_tpm_ca_cert or vault_tpm_ca_cert_src'] }}"
+    _missing: "{{ _missing_api + _missing_host + _missing_role + _missing_auth + _missing_policies + _missing_ca }}"
+
+- name: Fail when required inputs are missing
+  ansible.builtin.fail:
+    msg: "Missing required variables: {{ vault_tpm_missing_inputs | join('; ') }}."
+  when: vault_tpm_missing_inputs | length > 0

@@ -1,0 +1,13 @@
+---
+galaxy_info:
+  role_name: vault_tpm_proxy
+  author: vault_tpm_proxy
+  description: Install Vault Proxy with TPM auto-auth and enable it under systemd.
+  license: GPL-3.0-or-later
+  min_ansible_version: "2.16"
+  platforms:
+    - name: EL
+      versions:
+        - all
+
+dependencies: []
