@@ -12,10 +12,16 @@
     - name: Enable the mount, create the auth CA, and write the policy
       ansible.builtin.import_tasks: tasks/bootstrap.yml
 
-- name: Enroll the TPM and install Vault Proxy
+- name: Enroll the TPM
   hosts: demo
   gather_facts: true
   become: true
   roles:
     - role: vault_tpm_enroll
+
+- name: Install Vault Proxy
+  hosts: demo
+  gather_facts: true
+  become: true
+  roles:
     - role: vault_tpm_proxy

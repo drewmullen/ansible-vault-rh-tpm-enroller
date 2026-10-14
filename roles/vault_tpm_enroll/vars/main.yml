@@ -1,3 +1,8 @@
 ---
 vault_tpm_auth_path_normalized: "{{ vault_tpm_auth_path | regex_replace('/+$', '') }}"
 vault_tpm_effective_token_policies: "{{ vault_tpm_token_policies | default([]) | unique | list }}"
+vault_tpm_api_headers: >-
+  {{
+    {'X-Vault-Token': vault_tpm_token}
+    | combine({'X-Vault-Namespace': vault_tpm_namespace} if (vault_tpm_namespace | length > 0) else {})
+  }}

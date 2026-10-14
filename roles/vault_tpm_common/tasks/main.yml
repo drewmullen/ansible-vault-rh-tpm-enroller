@@ -1,0 +1,6 @@
+---
+- name: Refuse a direct run of the shared role
+  ansible.builtin.fail:
+    msg: >-
+      vault_tpm_common is imported by vault_tpm_enroll and vault_tpm_proxy.
+      Apply those roles instead.

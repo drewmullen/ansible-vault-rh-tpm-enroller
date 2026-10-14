@@ -1,4 +1,13 @@
 ---
+- name: Create the proxy socket directory
+  ansible.builtin.file:
+    path: "{{ vault_tpm_socket_dir }}"
+    state: directory
+    owner: "{{ vault_tpm_proxy_user }}"
+    group: "{{ vault_tpm_proxy_user }}"
+    mode: "0750"
+  become: true
+
 - name: Install the proxy unit
   ansible.builtin.template:
     src: vault-proxy.service.j2
@@ -16,3 +25,13 @@
     enabled: "{{ vault_tpm_service_enabled }}"
     state: "{{ vault_tpm_service_state }}"
   become: true
+
+- name: Restart the proxy when the Vault binary changed
+  ansible.builtin.systemd_service:
+    name: "{{ vault_tpm_service_name }}"
+    state: restarted
+    daemon_reload: true
+  become: true
+  when:
+    - vault_tpm_binary_changed | default(false) | bool
+    - vault_tpm_service_state == "started"

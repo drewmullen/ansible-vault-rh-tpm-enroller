@@ -2,11 +2,19 @@
 # Policies named in vault_tpm_token_policies must already exist.
 # Enable auth/tpm and write auth/<mount>/config before this play.
 #
+# Enroll is serial so two hosts cannot overwrite each other's tpm_ids.
 # ansible-playbook -i examples/inventory.yml examples/enroll.yml
-- name: Enroll application hosts and install Vault Proxy
+- name: Enroll application host TPMs
+  hosts: app_hosts
+  gather_facts: true
+  become: true
+  serial: 1
+  roles:
+    - role: vault_tpm_enroll
+
+- name: Install Vault Proxy
   hosts: app_hosts
   gather_facts: true
   become: true
   roles:
-    - role: vault_tpm_enroll
     - role: vault_tpm_proxy

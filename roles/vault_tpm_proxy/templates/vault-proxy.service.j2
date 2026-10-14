@@ -1,16 +1,18 @@
 [Unit]
-Description=Vault Proxy with TPM auto-auth
+Description=Vault Agent with TPM auto-auth
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 User={{ vault_tpm_proxy_user }}
 Group={{ vault_tpm_proxy_user }}
-{% if vault_tpm_socket_dir == '/run/vault-proxy' %}
-RuntimeDirectory=vault-proxy
+{% if vault_tpm_socket_dir is match('^/(var/)?run/[^/]+$') %}
+RuntimeDirectory={{ vault_tpm_socket_dir | regex_replace('^/(var/)?run/', '') }}
 RuntimeDirectoryMode=0750
 {% endif %}
-ExecStart={{ vault_tpm_bin_path }} proxy -config={{ vault_tpm_proxy_config_path }}
+ExecStartPre=+/usr/bin/install -d -o {{ vault_tpm_proxy_user }} -g {{ vault_tpm_proxy_user }} -m 0750 {{ vault_tpm_socket_dir }}
+# 2.2.0-rc1+ent registers method "tpm" on vault agent. The config is still the API proxy config.
+ExecStart={{ vault_tpm_bin_path }} agent -config={{ vault_tpm_proxy_config_path }}
 Restart=on-failure
 RestartSec=2
 

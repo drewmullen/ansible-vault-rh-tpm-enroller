@@ -60,37 +60,3 @@
       Vault at {{ vault_tpm_api_addr }} must be Enterprise 2.2 or newer.
       The version string must contain "ent".
       The health endpoint reported {{ _raw if (_raw | length > 0) else 'no version' }}.
-
-- name: Log in with AppRole
-  hashicorp.vault.auth_login:
-    url: "{{ vault_tpm_api_addr }}"
-    auth_method: approle
-    namespace: "{{ vault_tpm_namespace if (vault_tpm_namespace | length > 0) else omit }}"
-    auth_params:
-      role_id: "{{ vault_tpm_role_id }}"
-      secret_id: "{{ vault_tpm_secret_id }}"
-  register: vault_tpm_approle_login
-  changed_when: false
-  no_log: true
-  delegate_to: localhost
-  become: false
-  environment:
-    REQUESTS_CA_BUNDLE: "{{ vault_tpm_controller_ca_path }}"
-    SSL_CERT_FILE: "{{ vault_tpm_controller_ca_path }}"
-  when: vault_tpm_token | length == 0
-
-- name: Record the admin token
-  ansible.builtin.set_fact:
-    vault_tpm_effective_token: "{{ vault_tpm_token if (vault_tpm_token | length > 0) else vault_tpm_approle_login.token_id }}"
-  no_log: true
-
-- name: Build Vault API headers
-  ansible.builtin.set_fact:
-    vault_tpm_api_headers: "{{ _headers }}"
-  vars:
-    _headers: >-
-      {{
-        {'X-Vault-Token': vault_tpm_effective_token}
-        | combine({'X-Vault-Namespace': vault_tpm_namespace} if (vault_tpm_namespace | length > 0) else {})
-      }}
-  no_log: true

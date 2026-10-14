@@ -18,21 +18,10 @@ argument_specs:
           - Vault address the host uses for vault tpm enroll. Defaults to vault_tpm_api_addr.
       vault_tpm_token:
         type: str
-        required: false
+        required: true
         no_log: true
         description:
-          - Admin token. Defaults to VAULT_TOKEN. Required unless AppRole is set.
-      vault_tpm_role_id:
-        type: str
-        required: false
-        description:
-          - AppRole role id used when vault_tpm_token is empty.
-      vault_tpm_secret_id:
-        type: str
-        required: false
-        no_log: true
-        description:
-          - AppRole secret id used when vault_tpm_token is empty.
+          - Vault token for enroll and for writing the auth role. Defaults to VAULT_TOKEN.
       vault_tpm_role_name:
         type: str
         required: true
@@ -98,7 +87,9 @@ argument_specs:
         required: false
         default: {}
         description:
-          - Extra keys merged onto the auth role body.
+          - TPM auth role fields merged into the role write.
+          - Unset fields keep the value already stored on the role.
+          - tpm_ids are appended to the current list. Known fields are display_name, cert_ttl, tpm_ids, tpmgroup_ids, token_ttl, token_max_ttl, token_period, token_explicit_max_ttl, token_policies, token_bound_cidrs, token_no_default_policy, token_num_uses, token_type, and alias_metadata.
       vault_tpm_enroll_name:
         type: str
         required: false

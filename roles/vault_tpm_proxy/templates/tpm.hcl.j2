@@ -1,6 +1,9 @@
 vault {
   address = "{{ vault_tpm_proxy_addr }}"
   ca_cert = "{{ vault_tpm_ca_cert_dest }}"
+{% if (vault_tpm_namespace | default('') | length) > 0 %}
+  namespace = "{{ vault_tpm_namespace }}"
+{% endif %}
 }
 
 tpm_cert "{{ vault_tpm_cert_name }}" {

@@ -1,7 +1,0 @@
----
-- name: Restart swtpm
-  ansible.builtin.systemd_service:
-    name: swtpm
-    state: restarted
-    daemon_reload: true
-  become: true

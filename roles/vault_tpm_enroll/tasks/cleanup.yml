@@ -1,0 +1,8 @@
+---
+- name: Remove the temporary controller CA file
+  ansible.builtin.file:
+    path: "{{ vault_tpm_ca_temp.path }}"
+    state: absent
+  delegate_to: localhost
+  become: false
+  when: vault_tpm_ca_temp is defined and vault_tpm_ca_temp.path is defined

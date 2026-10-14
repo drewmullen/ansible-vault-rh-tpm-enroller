@@ -3,8 +3,6 @@
 vault_tpm_api_addr: "{{ lookup('env', 'VAULT_ADDR') | default('', true) }}"
 vault_tpm_host_addr: "{{ vault_tpm_api_addr }}"
 vault_tpm_token: "{{ lookup('env', 'VAULT_TOKEN') | default('', true) }}"
-vault_tpm_role_id: ""
-vault_tpm_secret_id: ""
 
 vault_tpm_token_policies: []
 vault_tpm_auth_path: tpm

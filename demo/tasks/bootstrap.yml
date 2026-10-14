@@ -1,51 +1,58 @@
 ---
 # One-time Vault setup for the lab. The host roles do not do this.
 
-- name: Log in to Vault
-  ansible.builtin.import_role:
-    name: vault_tpm_enroll
-    tasks_from: session.yml
+- name: Prepare Vault TPM auth
+  block:
+    - name: Log in to Vault
+      ansible.builtin.import_role:
+        name: vault_tpm_enroll
+        tasks_from: session.yml
 
-- name: Record the auth mount path
-  ansible.builtin.set_fact:
-    vault_tpm_auth_path_normalized: "{{ vault_tpm_auth_path | default('tpm') | regex_replace('/+$', '') }}"
-    vault_tpm_namespace_arg: "{{ vault_tpm_namespace | default('') if ((vault_tpm_namespace | default('')) | length > 0) else 'root' }}"
+    - name: Record the auth mount path
+      ansible.builtin.set_fact:
+        vault_tpm_auth_path_normalized: "{{ vault_tpm_auth_path | default('tpm') | regex_replace('/+$', '') }}"
+        vault_tpm_namespace_arg: "{{ vault_tpm_namespace | default('') if ((vault_tpm_namespace | default('')) | length > 0) else 'root' }}"
 
-- name: Enable the TPM auth mount
-  hashicorp.vault.auth_method:
-    url: "{{ vault_tpm_api_addr }}"
-    ca_cert: "{{ vault_tpm_controller_ca_path }}"
-    auth_method: token
-    token: "{{ vault_tpm_effective_token }}"
-    namespace: "{{ vault_tpm_namespace_arg }}"
-    type: tpm
-    path: "{{ vault_tpm_auth_path_normalized }}"
-    description: "{{ vault_tpm_auth_description | default('TPM auth') }}"
-    state: present
-  no_log: true
+    - name: Enable the TPM auth mount
+      hashicorp.vault.auth_method:
+        url: "{{ vault_tpm_api_addr }}"
+        ca_cert: "{{ vault_tpm_controller_ca_path }}"
+        auth_method: token
+        token: "{{ vault_tpm_token }}"
+        namespace: "{{ vault_tpm_namespace_arg }}"
+        type: tpm
+        path: "{{ vault_tpm_auth_path_normalized }}"
+        description: "{{ vault_tpm_auth_description | default('TPM auth') }}"
+        state: present
+      no_log: true
 
-- name: Write the TPM auth backend config
-  hashicorp.vault.tpm_auth_config:
-    url: "{{ vault_tpm_api_addr }}"
-    ca_cert: "{{ vault_tpm_controller_ca_path }}"
-    auth_method: token
-    token: "{{ vault_tpm_effective_token }}"
-    namespace: "{{ vault_tpm_namespace_arg }}"
-    mount: "{{ vault_tpm_auth_path_normalized }}"
-    ca_lifetime: "{{ vault_tpm_ca_lifetime | default('8760h') | vault_tpm_seconds }}"
-    ca_soft_expiry: "{{ vault_tpm_ca_soft_expiry | default('720h') | vault_tpm_seconds }}"
-    state: present
-  no_log: true
+    - name: Write the TPM auth backend config
+      hashicorp.vault.tpm_auth_config:
+        url: "{{ vault_tpm_api_addr }}"
+        ca_cert: "{{ vault_tpm_controller_ca_path }}"
+        auth_method: token
+        token: "{{ vault_tpm_token }}"
+        namespace: "{{ vault_tpm_namespace_arg }}"
+        mount: "{{ vault_tpm_auth_path_normalized }}"
+        ca_lifetime: "{{ vault_tpm_ca_lifetime | default('8760h') | vault_tpm_seconds }}"
+        ca_soft_expiry: "{{ vault_tpm_ca_soft_expiry | default('720h') | vault_tpm_seconds }}"
+        state: present
+      no_log: true
 
-- name: Write the ACL policy
-  hashicorp.vault.acl_policy:
-    url: "{{ vault_tpm_api_addr }}"
-    auth_method: token
-    token: "{{ vault_tpm_effective_token }}"
-    ca_cert: "{{ vault_tpm_controller_ca_path }}"
-    namespace: "{{ vault_tpm_namespace_arg }}"
-    name: "{{ vault_tpm_policy_name }}"
-    policy: "{{ vault_tpm_policy_hcl }}"
-    state: present
-  no_log: true
-  when: vault_tpm_policy_hcl | default('') | length > 0
+    - name: Write the ACL policy
+      hashicorp.vault.acl_policy:
+        url: "{{ vault_tpm_api_addr }}"
+        auth_method: token
+        token: "{{ vault_tpm_token }}"
+        ca_cert: "{{ vault_tpm_controller_ca_path }}"
+        namespace: "{{ vault_tpm_namespace_arg }}"
+        name: "{{ vault_tpm_policy_name }}"
+        policy: "{{ vault_tpm_policy_hcl }}"
+        state: present
+      no_log: true
+      when: vault_tpm_policy_hcl | default('') | length > 0
+  always:
+    - name: Remove the temporary controller CA
+      ansible.builtin.import_role:
+        name: vault_tpm_enroll
+        tasks_from: cleanup.yml

@@ -6,27 +6,36 @@
     create_home: true
     home: "/var/lib/vault-proxy/{{ vault_tpm_proxy_user }}"
     shell: /usr/sbin/nologin
-    groups: "{{ 'tss' if (vault_tpm_device_path is match('^/dev/tpm')) else omit }}"
+    groups: "{{ 'tss' if ((vault_tpm_device_path is match('^/dev/tpm')) or (vault_tpm_device_path is not match('^/dev/'))) else omit }}"
     append: true
   become: true
 
-- name: Create proxy config, CA, and certificate directories
+- name: Create proxy config and CA directories
   ansible.builtin.file:
     path: "{{ item }}"
+    state: directory
+    owner: root
+    group: "{{ vault_tpm_proxy_user }}"
+    mode: "0750"
+  loop: "{{ [vault_tpm_proxy_config_path | dirname, vault_tpm_ca_cert_dest | dirname] | unique }}"
+  become: true
+
+- name: Create the TPM certificate directory
+  ansible.builtin.file:
+    path: "{{ vault_tpm_cert_dir }}"
     state: directory
     owner: "{{ vault_tpm_proxy_user }}"
     group: "{{ vault_tpm_proxy_user }}"
     mode: "0750"
-  loop: "{{ [vault_tpm_proxy_config_path | dirname, vault_tpm_ca_cert_dest | dirname, vault_tpm_cert_dir] | unique }}"
   become: true
 
 - name: Install the Vault CA from content
   ansible.builtin.copy:
     content: "{{ vault_tpm_ca_cert }}"
     dest: "{{ vault_tpm_ca_cert_dest }}"
-    owner: "{{ vault_tpm_proxy_user }}"
+    owner: root
     group: "{{ vault_tpm_proxy_user }}"
-    mode: "0644"
+    mode: "0640"
   become: true
   when: vault_tpm_ca_cert | length > 0
 
@@ -34,9 +43,9 @@
   ansible.builtin.copy:
     src: "{{ vault_tpm_ca_cert_src }}"
     dest: "{{ vault_tpm_ca_cert_dest }}"
-    owner: "{{ vault_tpm_proxy_user }}"
+    owner: root
     group: "{{ vault_tpm_proxy_user }}"
-    mode: "0644"
+    mode: "0640"
   become: true
   when: vault_tpm_ca_cert | length == 0
 
@@ -44,7 +53,7 @@
   ansible.builtin.copy:
     content: "{{ vault_tpm_proxy_config }}"
     dest: "{{ vault_tpm_proxy_config_path }}"
-    owner: "{{ vault_tpm_proxy_user }}"
+    owner: root
     group: "{{ vault_tpm_proxy_user }}"
     mode: "0640"
   become: true
@@ -55,7 +64,7 @@
   ansible.builtin.template:
     src: tpm.hcl.j2
     dest: "{{ vault_tpm_proxy_config_path }}"
-    owner: "{{ vault_tpm_proxy_user }}"
+    owner: root
     group: "{{ vault_tpm_proxy_user }}"
     mode: "0640"
   become: true

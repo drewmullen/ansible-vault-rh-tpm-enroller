@@ -1,18 +1,23 @@
 ---
-- name: Validate inputs
-  ansible.builtin.import_tasks: validate.yml
+- name: Enroll the host TPM
+  block:
+    - name: Validate inputs
+      ansible.builtin.import_tasks: validate.yml
 
-- name: Log in to Vault
-  ansible.builtin.import_tasks: session.yml
+    - name: Log in to Vault
+      ansible.builtin.import_tasks: session.yml
 
-- name: Install host packages
-  ansible.builtin.import_tasks: install.yml
+    - name: Install host packages
+      ansible.builtin.import_tasks: install.yml
 
-- name: Install the Vault CA
-  ansible.builtin.import_tasks: ca.yml
+    - name: Install the Vault CA
+      ansible.builtin.import_tasks: ca.yml
 
-- name: Enroll the TPM
-  ansible.builtin.import_tasks: enroll.yml
+    - name: Enroll the TPM
+      ansible.builtin.import_tasks: enroll.yml
 
-- name: Append this TPM to the auth role
-  ansible.builtin.import_tasks: auth_role.yml
+    - name: Append this TPM to the auth role
+      ansible.builtin.import_tasks: auth_role.yml
+  always:
+    - name: Remove the temporary controller CA
+      ansible.builtin.import_tasks: cleanup.yml

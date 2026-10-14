@@ -1,0 +1,16 @@
+---
+- name: Require gathered facts
+  ansible.builtin.assert:
+    that:
+      - ansible_os_family is defined
+      - ansible_architecture is defined
+    fail_msg: >-
+      Gather facts before {{ vault_tpm_component | default('this role') }}.
+      The role needs ansible_os_family and ansible_architecture.
+
+- name: Require a Red Hat family host
+  ansible.builtin.fail:
+    msg: >-
+      {{ vault_tpm_component | default('this role') }} supports the Red Hat family only
+      (ansible_os_family=RedHat). This host reports {{ ansible_os_family }}.
+  when: ansible_os_family != "RedHat"
